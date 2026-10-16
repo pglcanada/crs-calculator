@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Express Entry CRS Calculator | PGL Canadian Immigration Services</title>
+<!--
+  PGL CRS CALCULATOR — scoring data version: 2026-10-16
+  Source: IRCC "Comprehensive Ranking System (CRS) criteria" grid + language test equivalency charts (canada.ca).
+  Maintained from ~/workspace/pgl-website/crs-calculator/crs-calculator.html
+  Weekly automated check compares this data version against the live IRCC page.
+  Audit log: 2026-10-16 — full re-verification of all tables/converters against IRCC grid; 24 automated tests pass.
+-->
+<style>
+  :root{
+    --red:#CC1616; --red-dark:#a01111; --red-soft:#fdecec;
+    --ink:#16161a; --muted:#6b7280; --faint:#9ca3af;
+    --bg:#f4f4f6; --card:#ffffff; --line:#e8e8ec;
+    --radius:18px;
+    --shadow:0 1px 2px rgba(16,16,26,.04),0 8px 24px -12px rgba(16,16,26,.12);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);margin:0;line-height:1.55}
+  .wrap{max-width:780px;margin:0 auto;padding:28px 16px 64px}
+
+  /* ---------- hero ---------- */
+  .hero{position:relative;overflow:hidden;border-radius:24px;padding:36px 28px;margin-bottom:22px;color:#fff;
+    background:radial-gradient(1200px 400px at 85% -10%,rgba(204,22,22,.55),transparent 60%),linear-gradient(135deg,#0d0d10 0%,#1c0a0a 100%);
+    box-shadow:var(--shadow)}
+  .hero::after{content:"";position:absolute;inset:0;background:radial-gradient(600px 200px at 10% 110%,rgba(204,22,22,.25),transparent 60%);pointer-events:none}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#ffb4b4;margin-bottom:14px}
+  .eyebrow::before{content:"";width:22px;height:2px;background:var(--red);border-radius:2px}
+  .hero h1{margin:0 0 10px;font-size:clamp(1.6rem,4.5vw,2.2rem);letter-spacing:-.02em;line-height:1.15}
+  .hero p{margin:0;color:#c9c9d1;font-size:.95rem;max-width:56ch}
+
+  /* ---------- cards ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin-bottom:16px;box-shadow:var(--shadow)}
+  .step{display:flex;gap:14px;align-items:flex-start;margin-bottom:6px}
+  .step-n{flex:none;width:34px;height:34px;border-radius:50%;background:var(--red-soft);color:var(--red);font-weight:800;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+  .step h2{margin:2px 0 2px;font-size:1.08rem;letter-spacing:-.01em}
+  .step p.sub{margin:0 0 8px;color:var(--muted);font-size:.85rem}
+
+  label.f{display:block;font-weight:600;font-size:.88rem;margin:16px 0 7px}
+  label.f:first-of-type{margin-top:6px}
+  select,input[type=number]{width:100%;padding:12px 14px;font-size:1rem;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);appearance:none;transition:border-color .15s,box-shadow .15s}
+  select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
+  select:focus,input[type=number]:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(204,22,22,.12)}
+  input[type=number]{appearance:textfield;-moz-appearance:textfield}
+  input[type=number]::-webkit-inner-spin-button{opacity:1}
+
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .grid4 .cell label{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:560px){.grid4{grid-template-columns:repeat(2,1fr)}}
+
+  /* segmented radios */
+  .seg{display:inline-flex;background:#f0f0f3;border-radius:12px;padding:4px;gap:4px;flex-wrap:wrap}
+  .seg label{border-radius:9px;padding:9px 16px;font-size:.9rem;cursor:pointer;font-weight:600;color:var(--muted);transition:all .15s;margin:0}
+  .seg input{position:absolute;opacity:0;pointer-events:none}
+  .seg label:has(input:checked){background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+  .seg label:has(input:checked).accent,.seg.accent label:has(input:checked){background:var(--red);color:#fff}
+  .checkline{display:flex;align-items:center;gap:10px;font-weight:600;font-size:.92rem;cursor:pointer}
+  .checkline input{width:20px;height:20px;accent-color:var(--red)}
+
+  .note{font-size:.8rem;color:var(--muted);margin:10px 0 0;line-height:1.55}
+  .hidden{display:none!important}
+  .divider{height:1px;background:var(--line);margin:18px -24px 0}
+
+  /* ---------- score panel ---------- */
+  #result{position:sticky;bottom:14px;z-index:5}
+  .score{background:linear-gradient(135deg,#101014,#1e0c0c);border-radius:22px;padding:22px;color:#fff;box-shadow:0 18px 44px -14px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.07)}
+  .score-top{display:flex;gap:20px;align-items:center}
+  .ring{flex:none;width:118px;height:118px;transform:rotate(-90deg)}
+  .ring-bg{fill:none;stroke:rgba(255,255,255,.12);stroke-width:11}
+  .ring-fg{fill:none;stroke:url(#rg);stroke-width:11;stroke-linecap:round;transition:stroke-dashoffset .8s cubic-bezier(.22,1,.36,1)}
+  .score-num{font-size:2.6rem;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .score-num small{font-size:1rem;font-weight:500;color:#a1a1aa}
+  .verdict{margin-top:8px;font-size:.9rem;color:#d4d4d8;max-width:38ch}
+  .tier{display:inline-block;font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:5px 12px;border-radius:999px;margin-bottom:8px}
+  .tier.t1{background:rgba(52,211,153,.16);color:#6ee7b7}
+  .tier.t2{background:rgba(96,165,250,.16);color:#93c5fd}
+  .tier.t3{background:rgba(251,191,36,.16);color:#fcd34d}
+  .tier.t4{background:rgba(248,113,113,.16);color:#fca5a5}
+
+  .breakdown{margin-top:14px}
+  .breakdown details{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:12px;margin-bottom:8px;padding:12px 16px}
+  .breakdown summary{cursor:pointer;font-weight:700;font-size:.9rem;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  .breakdown summary::-webkit-details-marker{display:none}
+  .breakdown summary::after{content:"›";transform:rotate(90deg);color:#a1a1aa;font-size:1.2rem;transition:transform .2s}
+  .breakdown details[open] summary::after{transform:rotate(-90deg)}
+  .breakdown summary .pts{color:#ffb4b4;font-variant-numeric:tabular-nums}
+  .breakdown table{width:100%;border-collapse:collapse;margin-top:10px;font-size:.84rem}
+  .breakdown td{padding:7px 2px;border-top:1px solid rgba(255,255,255,.08);color:#c9c9d1}
+  .breakdown td:last-child{text-align:right;font-variant-numeric:tabular-nums;color:#fff;font-weight:700;white-space:nowrap}
+
+  .cta{display:flex;align-items:center;justify-content:center;gap:10px;text-align:center;background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff;font-weight:700;font-size:1.02rem;text-decoration:none;border-radius:14px;padding:16px;margin-top:14px;box-shadow:0 10px 24px -8px rgba(204,22,22,.55);transition:transform .12s,box-shadow .12s}
+  .cta:hover{transform:translateY(-1px);box-shadow:0 14px 28px -8px rgba(204,22,22,.6)}
+  .cta small{font-weight:500;opacity:.85;font-size:.82rem}
+  .score-cta{margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .score-cta span{font-size:.9rem;color:#d4d4d8}
+  .score-cta a{background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff;font-weight:700;text-decoration:none;padding:13px 22px;border-radius:12px;font-size:.94rem;white-space:nowrap;box-shadow:0 8px 20px -8px rgba(204,22,22,.6);transition:transform .12s}
+  .score-cta a:hover{transform:translateY(-1px)}
+  .report-gate{margin-top:16px;padding:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px}
+  .report-gate h3{margin:0 0 4px;font-size:1rem}
+  .report-gate p.lead{margin:0 0 12px;font-size:.86rem;color:#c9c9d1}
+  .report-gate input[type=text],.report-gate input[type=email]{background:#fff}
+  .report-gate button{display:block;width:100%;margin-top:12px;background:#fff;color:var(--ink);font-weight:700;font-size:.95rem;border:none;border-radius:12px;padding:13px;cursor:pointer;transition:transform .12s}
+  .report-gate button:hover{transform:translateY(-1px)}
+  .report-gate button:disabled{opacity:.6;cursor:wait;transform:none}
+  .report-gate .fine{font-size:.74rem;color:#a1a1aa;margin:10px 0 0;line-height:1.55}
+  .report-gate .ok{color:#6ee7b7;font-weight:600}
+  .report-gate .err{color:#fca5a5;font-weight:600}
+  .disclaimer{font-size:.78rem;color:var(--muted);line-height:1.65;margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .datastamp{font-size:.72rem;color:var(--faint);text-align:center;margin-top:12px}
+  .fadein{animation:fade .5s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero fadein">
+    <span class="eyebrow">PGL Canadian Immigration Services</span>
+    <h1>Express Entry CRS Calculator</h1>
+    <p>Estimate your Comprehensive Ranking System score out of 1,200 — the points system IRCC uses to rank Express Entry candidates. Answer the questions below and your score updates live.</p>
+  </header>
+
+  <!-- 1 -->
+  <div class="card fadein">
+    <div class="step"><div class="step-n">1</div><div><h2>About you</h2><p class="sub">Core points are scored differently depending on whether a spouse or partner accompanies you.</p></div></div>
+    <div class="grid2">
+      <div><label class="f" for="age">Your age</label><input type="number" id="age" min="16" max="60" value="30"></div>
+      <div><label class="f">Marital status</label>
+        <div class="seg accent" id="marital">
+          <label><input type="radio" name="marital" value="single" checked> Single</label>
+          <label><input type="radio" name="marital" value="married"> Married / common-law</label>
+        </div>
+      </div>
+    </div>
+    <div id="spouseAccWrap" class="hidden">
+      <label class="f">Is your spouse or common-law partner accompanying you to Canada?</label>
+      <div class="seg">
+        <label><input type="radio" name="spouseAcc" value="yes" checked> Yes, accompanying</label>
+        <label><input type="radio" name="spouseAcc" value="no"> No — or they are a Canadian citizen / PR</label>
+      </div>
+      <p class="note">If your spouse is not accompanying you, or is a Canadian citizen or permanent resident, you are scored as a single applicant.</p>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="card fadein">
+    <div class="step"><div class="step-n">2</div><div><h2>Education</h2><p class="sub">Your highest completed credential, as it would be assessed (e.g. by an ECA).</p></div></div>
+    <label class="f" for="edu">Highest level of education</label>
+    <select id="edu">
+      <option value="phd">Doctoral degree (PhD)</option>
+      <option value="masters">Master's degree, or professional degree (medicine, law, pharmacy, dentistry, optometry, veterinary medicine, chiropractic)</option>
+      <option value="twoplus">Two or more certificates / diplomas / degrees — one of 3+ years</option>
+      <option value="bachelor" selected>Bachelor's degree (or 3+ year program)</option>
+      <option value="twoyr">Two-year program (college / trade / technical)</option>
+      <option value="oneyr">One-year program (college / trade / technical)</option>
+      <option value="secondary">Secondary school diploma (high school)</option>
+      <option value="none">Less than secondary school</option>
+    </select>
+  </div>
+
+  <!-- 3 -->
+  <div class="card fadein">
+    <div class="step"><div class="step-n">3</div><div><h2>Language tests</h2><p class="sub">Enter your most recent approved test scores — they are converted to CLB / NCLC levels automatically.</p></div></div>
+    <label class="f">First official language</label>
+    <div class="seg accent">
+      <label><input type="radio" name="lang1" value="en" checked> English</label>
+      <label><input type="radio" name="lang1" value="fr"> French</label>
+    </div>
+    <div id="lang1block"></div>
+    <div class="divider"></div>
+    <div style="margin-top:16px"><label class="checkline"><input type="checkbox" id="hasLang2"> I also took a test in my second official language</label></div>
+    <div id="lang2block" class="hidden" style="margin-top:12px"></div>
+  </div>
+
+  <!-- 4 -->
+  <div class="card fadein">
+    <div class="step"><div class="step-n">4</div><div><h2>Work experience</h2><p class="sub">Skilled work experience counted under Express Entry rules.</p></div></div>
+    <div class="grid2">
+      <div><label class="f" for="cdnWork">In Canada <span style="color:var(--faint);font-weight:500">(last 10 years)</span></label>
+        <select id="cdnWork">
+          <option value="0">None or less than 1 year</option><option value="1">1 year</option><option value="2">2 years</option>
+          <option value="3" selected>3 years</option><option value="4">4 years</option><option value="5">5 years or more</option>
+        </select></div>
+      <div><label class="f" for="forWork">Outside Canada</label>
+        <select id="forWork">
+          <option value="0">None</option><option value="1">1–2 years</option><option value="2" selected>3 years or more</option>
+        </select></div>
+    </div>
+  </div>
+
+  <!-- 5 spouse -->
+  <div class="card hidden fadein" id="spouseCard">
+    <div class="step"><div class="step-n">5</div><div><h2>Spouse / partner factors</h2><p class="sub">Worth up to 40 additional points when your spouse accompanies you.</p></div></div>
+    <label class="f" for="spEdu">Spouse's highest education</label>
+    <select id="spEdu">
+      <option value="none">Less than secondary school</option><option value="secondary">Secondary school diploma</option>
+      <option value="oneyr">One-year program</option><option value="twoyr">Two-year program</option>
+      <option value="bachelor" selected>Bachelor's degree (or 3+ year program)</option>
+      <option value="twoplus">Two or more credentials — one of 3+ years</option>
+      <option value="masters">Master's / professional degree</option><option value="phd">Doctoral degree (PhD)</option>
+    </select>
+    <label class="f">Spouse's first official language</label>
+    <div class="seg accent" style="margin-bottom:10px">
+      <label><input type="radio" name="spLang" value="en" checked> English</label>
+      <label><input type="radio" name="spLang" value="fr"> French</label>
+    </div>
+    <div id="spLangBlock"></div>
+    <label class="f" for="spCdnWork">Spouse's Canadian work experience</label>
+    <select id="spCdnWork">
+      <option value="0">None or less than 1 year</option><option value="1" selected>1 year</option><option value="2">2 years</option>
+      <option value="3">3 years</option><option value="4">4 years</option><option value="5">5 years or more</option>
+    </select>
+  </div>
+
+  <!-- 6 additional -->
+  <div class="card fadein">
+    <div class="step"><div class="step-n">6</div><div><h2>Bonus points</h2><p class="sub">Additional factors worth up to 600 points.</p></div></div>
+    <label class="f">Certificate of qualification in a trade (issued by a Canadian province / territory)?</label>
+    <div class="seg"><label><input type="radio" name="cert" value="no" checked> No</label><label><input type="radio" name="cert" value="yes"> Yes</label></div>
+    <label class="f">Brother or sister (18+) living in Canada as a citizen or permanent resident?</label>
+    <div class="seg"><label><input type="radio" name="sibling" value="no" checked> No</label><label><input type="radio" name="sibling" value="yes"> Yes</label></div>
+    <label class="f" for="cdnEdu">Post-secondary education completed in Canada</label>
+    <select id="cdnEdu"><option value="0">None</option><option value="15">Credential of 1–2 years</option><option value="30">Credential of 3 years or longer</option></select>
+    <label class="f" for="jobOffer">Arranged employment <span style="color:var(--faint);font-weight:500">(valid qualifying job offer)</span></label>
+    <select id="jobOffer"><option value="0">None</option><option value="200">NOC TEER 0, Major group 00 (senior management)</option><option value="50">NOC TEER 1, 2 or 3 — or other TEER 0</option></select>
+    <label class="f">Provincial / territorial nomination?</label>
+    <div class="seg accent"><label><input type="radio" name="pnp" value="no" checked> No</label><label><input type="radio" name="pnp" value="yes"> Yes — 600 points</label></div>
+  </div>
+
+  <!-- result -->
+  <div id="result">
+    <div class="score fadein">
+      <div class="score-top">
+        <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+          <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ff6b6b"/><stop offset="1" stop-color="#CC1616"/>
+          </linearGradient></defs>
+          <circle class="ring-bg" cx="60" cy="60" r="52"/>
+          <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52"/>
+        </svg>
+        <div>
+          <span class="tier" id="tier">—</span>
+          <div class="score-num"><span id="totalScore">0</span><small> / 1200</small></div>
+          <div class="verdict" id="verdict"></div>
+        </div>
+      </div>
+      <div class="breakdown" id="breakdown"></div>
+      <div class="report-gate">
+        <h3>Get your personalized CRS report</h3>
+        <p class="lead">Your full breakdown, plus your 3 biggest opportunities to raise your score — sent to your inbox.</p>
+        <div class="grid2">
+          <input type="text" id="rgName" placeholder="Your name" autocomplete="name" maxlength="80">
+          <input type="email" id="rgEmail" placeholder="Email address" autocomplete="email" maxlength="120">
+        </div>
+        <button id="rgBtn" type="button">Send my report →</button>
+        <p class="fine">We'll email your report to the address above and share a copy with our team so we can follow up. We never sell your information.</p>
+        <p class="fine hidden" id="rgMsg"></p>
+      </div>
+      <div class="score-cta">
+        <span>What does your score mean for your case?</span>
+        <a href="https://calendly.com/pglimmigration/consult" target="_blank" rel="noopener">Book a consultation →</a>
+      </div>
+    </div>
+    <div class="disclaimer">
+      <strong>Estimate only — not legal or immigration advice.</strong> This calculator applies IRCC's published Comprehensive Ranking System criteria as of the date shown below. It cannot account for every program requirement, and IRCC may change the criteria at any time. Your actual CRS score is determined by IRCC when you submit an Express Entry profile. For advice on your specific case, book a consultation with a licensed consultant.
+    </div>
+    <div class="datastamp" id="datastamp"></div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+/* CRS scoring data — version 2026-10-16, from IRCC's official CRS criteria grid. */
+var DATA_VERSION = "2026-10-16";
+
+function pts(table, key, spouse) { var r = table[key]; return spouse ? r[0] : r[1]; }
+
+/* A. Age: [with spouse, without spouse] */
+var AGE_T = {18:[90,99],19:[95,105],30:[95,105],31:[90,99],32:[85,94],33:[80,88],34:[75,83],35:[70,77],36:[65,72],37:[60,66],38:[55,61],39:[50,55],40:[45,50],41:[35,39],42:[25,28],43:[15,17],44:[5,6]};
+function agePts(age, spouse) {
+  if (age <= 17 || age >= 45) return 0;
+  if (age >= 20 && age <= 29) return spouse ? 100 : 110;
+  return pts(AGE_T, age, spouse);
+}
+/* A. Education */
+var EDU_T = {none:[0,0],secondary:[28,30],oneyr:[84,90],twoyr:[91,98],bachelor:[112,120],twoplus:[119,128],masters:[126,135],phd:[140,150]};
+/* A. First language per ability by CLB */
+function lang1Ability(clb, spouse) {
+  if (clb < 4) return 0;
+  if (clb <= 5) return 6;
+  if (clb === 6) return spouse ? 8 : 9;
+  if (clb === 7) return spouse ? 16 : 17;
+  if (clb === 8) return spouse ? 22 : 23;
+  if (clb === 9) return spouse ? 29 : 31;
+  return spouse ? 32 : 34;
+}
+/* A. Second language per ability, capped */
+function lang2Ability(clb) {
+  if (clb <= 4) return 0;
+  if (clb <= 6) return 1;
+  if (clb <= 8) return 3;
+  return 6;
+}
+/* A. Canadian work experience */
+var CDN_T = {0:[0,0],1:[35,40],2:[46,53],3:[56,64],4:[63,72],5:[70,80]};
+/* B. Spouse education (max 10) */
+var SP_EDU = {none:0,secondary:2,oneyr:6,twoyr:7,bachelor:8,twoplus:9,masters:10,phd:10};
+function spLangAbility(clb) { if (clb <= 4) return 0; if (clb <= 6) return 1; if (clb <= 8) return 3; return 5; }
+var SP_CDN = {0:0,1:5,2:7,3:8,4:9,5:10};
+/* C. Education rank for transferability */
+var EDU_RANK = {none:0,secondary:0,oneyr:1,twoyr:1,bachelor:1,twoplus:2,masters:3,phd:4};
+
+function min4(a){ return Math.min(a[0],a[1],a[2],a[3]); }
+
+/* ---- Test score -> CLB converters (IRCC equivalency charts) ---- */
+function thr(score, table) { for (var i=0;i<table.length;i++){ if (score >= table[i][0]) return table[i][1]; } return 0; }
+var IELTS = {
+  r:[[8.0,10],[7.0,9],[6.5,8],[6.0,7],[5.0,6],[4.0,5],[3.5,4]],
+  w:[[7.5,10],[7.0,9],[6.5,8],[6.0,7],[5.5,6],[5.0,5],[4.0,4]],
+  l:[[8.5,10],[8.0,9],[7.5,8],[6.0,7],[5.5,6],[5.0,5],[4.5,4]],
+  s:[[7.5,10],[7.0,9],[6.5,8],[6.0,7],[5.5,6],[5.0,5],[4.0,4]]
+};
+var PTE = {
+  r:[[88,10],[78,9],[69,8],[60,7],[51,6],[42,5],[33,4],[24,3]],
+  w:[[90,10],[88,9],[79,8],[69,7],[60,6],[51,5],[41,4],[32,3]],
+  l:[[89,10],[82,9],[71,8],[60,7],[50,6],[39,5],[28,4],[18,3]],
+  s:[[89,10],[84,9],[76,8],[68,7],[59,6],[51,5],[42,4],[34,3]]
+};
+var TEF = { /* post-Dec 10 2023 scores; for EE use the "ancien score" column */
+  r:[[546,10],[503,9],[462,8],[434,7],[393,6],[352,5],[306,4]],
+  w:[[558,10],[512,9],[472,8],[428,7],[379,6],[330,5],[268,4]],
+  l:[[546,10],[503,9],[462,8],[434,7],[393,6],[352,5],[306,4]],
+  s:[[556,10],[518,9],[494,8],[456,7],[422,6],[387,5],[328,4]]
+};
+var TCF = {
+  r:[[549,10],[524,9],[499,8],[453,7],[406,6],[375,5],[342,4]],
+  w:[[16,10],[14,9],[12,8],[10,7],[7,6],[6,5],[4,4]],
+  l:[[549,10],[523,9],[503,8],[458,7],[398,6],[369,5],[331,4]],
+  s:[[16,10],[14,9],[12,8],[10,7],[7,6],[6,5],[4,4]]
+};
+function toCLB(test, scores) { /* scores: [r,w,l,s] */
+  return scores.map(function(s, i){
+    if (s === "" || s === null || isNaN(s)) return 0;
+    s = parseFloat(s);
+    if (test === "celpip") return Math.min(10, Math.max(0, Math.floor(s)));
+    var ab = ["r","w","l","s"][i];
+    return thr(s, {ielts:IELTS,pte:PTE,tef:TEF,tcf:TCF}[test][ab]);
+  });
+}
+
+/* ---- Main scoring ---- */
+function compute(v) {
+  var spouse = (v.marital === "married" && v.spouseAcc === "yes");
+  var out = {A:{}, B:{}, C:{}, D:{}, total:0};
+  /* A */
+  out.A.age = agePts(v.age, spouse);
+  out.A.edu = pts(EDU_T, v.edu, spouse);
+  var l1 = v.lang1clb;
+  out.A.lang1 = l1.reduce(function(s,c){ return s + lang1Ability(c, spouse); }, 0);
+  var l2 = v.lang2clb;
+  var l2raw = l2.reduce(function(s,c){ return s + lang2Ability(c); }, 0);
+  out.A.lang2 = Math.min(l2raw, spouse ? 22 : 24);
+  out.A.cdn = pts(CDN_T, v.cdnWork, spouse);
+  out.A.total = out.A.age + out.A.edu + out.A.lang1 + out.A.lang2 + out.A.cdn;
+  /* B */
+  if (spouse) {
+    out.B.edu = SP_EDU[v.spEdu];
+    out.B.lang = Math.min(20, v.spLangClb.reduce(function(s,c){ return s + spLangAbility(c); }, 0));
+    out.B.cdn = SP_CDN[v.spCdnWork];
+    out.B.total = out.B.edu + out.B.lang + out.B.cdn;
+  } else out.B.total = 0;
+  /* C */
+  var rank = EDU_RANK[v.edu], all7 = min4(l1) >= 7, all9 = min4(l1) >= 9;
+  var cd = {};
+  cd.eduLang = rank >= 1 ? (all9 ? (rank >= 2 ? 50 : 25) : (all7 ? (rank >= 2 ? 25 : 13) : 0)) : 0;
+  cd.eduCdn = (rank >= 1 && v.cdnWork >= 1) ? (v.cdnWork >= 2 ? (rank >= 2 ? 50 : 25) : (rank >= 2 ? 25 : 13)) : 0;
+  cd.forLang = v.forWork > 0 && all7 ? (all9 ? (v.forWork === 2 ? 50 : 25) : (v.forWork === 2 ? 25 : 13)) : 0;
+  cd.forCdn = (v.forWork > 0 && v.cdnWork >= 1) ? (v.cdnWork >= 2 ? (v.forWork === 2 ? 50 : 25) : (v.forWork === 2 ? 25 : 13)) : 0;
+  var certMin = min4(l1);
+  cd.cert = v.cert ? (certMin >= 7 ? 50 : (certMin >= 5 ? 25 : 0)) : 0;
+  out.C = cd; out.C.total = Math.min(100, cd.eduLang + cd.eduCdn + cd.forLang + cd.forCdn + cd.cert);
+  /* D */
+  var dd = {};
+  dd.sibling = v.sibling ? 15 : 0;
+  var fr = v.frenchClb, en = v.englishClb;
+  dd.french = (min4(fr) >= 7) ? (min4(en) >= 5 ? 50 : 25) : 0;
+  dd.cdnEdu = parseInt(v.cdnEdu, 10) || 0;
+  dd.job = parseInt(v.jobOffer, 10) || 0;
+  dd.pnp = v.pnp ? 600 : 0;
+  out.D = dd; out.D.total = Math.min(600, dd.sibling + dd.french + dd.cdnEdu + dd.job + dd.pnp);
+  out.total = out.A.total + out.B.total + out.C.total + out.D.total;
+  return out;
+}
+
+/* ---- "Biggest opportunities" what-if engine ---- */
+var EDU_LABEL = {none:"Less than secondary school",secondary:"Secondary school diploma",oneyr:"One-year post-secondary program",twoyr:"Two-year post-secondary program",bachelor:"Bachelor's degree (3+ year program)",twoplus:"Two or more credentials (one 3+ years)",masters:"Master's / professional degree",phd:"Doctoral degree (PhD)"};
+var NEXT_EDU = {none:"secondary",secondary:"oneyr",oneyr:"twoyr",twoyr:"bachelor",bachelor:"twoplus",twoplus:"masters",masters:"phd"};
+function eduLabel(k){ return EDU_LABEL[k] || k; }
+function clbList(a){ return "CLB " + a[0] + " / " + a[1] + " / " + a[2] + " / " + a[3] + " (R/W/L/S)"; }
+
+function opportunities(v, r) {
+  var opps = [];
+  function scenario(label, mutate) {
+    try {
+      var v2 = JSON.parse(JSON.stringify(v));
+      mutate(v2);
+      var d = compute(v2).total - r.total;
+      if (d > 0) opps.push({label:label, delta:d});
+    } catch(e){}
+  }
+  var langName = (v.lang1IsEn ? "English" : "French") + " test";
+  var minL1 = min4(v.lang1clb);
+  if (minL1 < 9)  scenario("Reach CLB 9 in all four abilities of your " + langName, function(x){ x.lang1clb=[9,9,9,9]; });
+  if (minL1 < 10) scenario("Reach CLB 10 in all four abilities of your " + langName, function(x){ x.lang1clb=[10,10,10,10]; });
+  if (NEXT_EDU[v.edu]) (function(ne){
+    scenario("Upgrade your assessed education to: " + eduLabel(ne), function(x){ x.edu = ne; });
+  })(NEXT_EDU[v.edu]);
+  if (v.cdnWork < 5) (function(ny){
+    scenario("Gain one more year of Canadian work experience (" + ny + " yr total)", function(x){ x.cdnWork = ny; });
+  })(v.cdnWork + 1);
+  var frMin = min4(v.frenchClb);
+  if (frMin >= 4 && frMin < 7) scenario("Reach NCLC 7 in all four French abilities (French bonus points)", function(x){ x.frenchClb=[7,7,7,7]; });
+  if (v.marital === "married" && v.spouseAcc === "yes" && min4(v.spLangClb) < 9)
+    scenario("Your spouse reaches CLB 9 in all four language abilities", function(x){ x.spLangClb=[9,9,9,9]; });
+  if (v.hasLang2 && min4(v.lang2clb) < 9)
+    scenario("Reach CLB 9 in all four abilities of your second official language", function(x){ x.lang2clb=[9,9,9,9]; });
+  opps.sort(function(a,b){ return b.delta - a.delta; });
+  return opps.slice(0, 3);
+}
+
+function inputSummary(v) {
+  var L = [];
+  L.push("Age: " + v.age);
+  L.push("Status: " + (v.marital === "married" ? (v.spouseAcc === "yes" ? "Married/common-law (spouse accompanying)" : "Married/common-law (scored as single)") : "Single"));
+  L.push("Education: " + eduLabel(v.edu));
+  L.push("First language (" + (v.lang1IsEn ? "English" : "French") + "): " + clbList(v.lang1clb));
+  if (v.hasLang2) L.push("Second language: " + clbList(v.lang2clb));
+  L.push("Canadian work experience: " + (v.cdnWork >= 5 ? "5+ years" : v.cdnWork + (v.cdnWork === 1 ? " year" : " years")));
+  L.push("Foreign work experience: " + ["none","1-2 years","3+ years"][v.forWork]);
+  if (v.marital === "married" && v.spouseAcc === "yes")
+    L.push("Spouse: " + eduLabel(v.spEdu) + ", language " + clbList(v.spLangClb) + ", " + v.spCdnWork + "+ yr CDN work");
+  var bonus = [];
+  if (v.cert) bonus.push("trade certificate");
+  if (v.sibling) bonus.push("sibling in Canada");
+  if (v.cdnEdu !== "0") bonus.push("Canadian education (" + v.cdnEdu + " pts)");
+  if (v.jobOffer !== "0") bonus.push("arranged employment (" + v.jobOffer + " pts)");
+  if (v.pnp) bonus.push("provincial nomination");
+  L.push("Bonus factors: " + (bonus.length ? bonus.join("; ") : "none"));
+  return L.join("\n");
+}
+
+/* ---- Report email (via relay) ---- */
+var RELAY_URL = "https://formsubmit.co/ajax/info@pglimmigration.com";
+var lastV = null, lastR = null;
+
+function visitorReport(name, r, opps, v) {
+  var L = [];
+  L.push("Hi " + name + ",");
+  L.push("");
+  L.push("Your estimated Express Entry CRS score: " + r.total + " / 1200");
+  L.push("");
+  L.push("Section breakdown:");
+  L.push("- A. Core / human capital: " + r.A.total);
+  if (r.B.total) L.push("- B. Spouse factors: " + r.B.total);
+  L.push("- C. Skill transferability: " + r.C.total + " (max 100)");
+  L.push("- D. Additional: " + r.D.total + " (max 600)");
+  L.push("");
+  if (opps.length) {
+    L.push("Your 3 biggest opportunities to raise it:");
+    opps.forEach(function(o, i){ L.push((i+1) + ". +" + o.delta + " points — " + o.label); });
+    L.push("");
+  }
+  L.push("This is an estimate only, based on IRCC's published criteria — not legal or immigration advice.");
+  L.push("Want to talk through what this means for your case? Book a consultation:");
+  L.push("https://calendly.com/pglimmigration/consult");
+  L.push("");
+  L.push("— PGL Canadian Immigration Services");
+  return L.join("\n");
+}
+
+function sendReport() {
+  var nameEl = document.getElementById("rgName"), emailEl = document.getElementById("rgEmail");
+  var msg = document.getElementById("rgMsg"), btn = document.getElementById("rgBtn");
+  var name = nameEl.value.trim(), email = emailEl.value.trim();
+  msg.classList.remove("hidden","ok","err");
+  function say(t, cls){ msg.textContent = t; msg.classList.add(cls); msg.classList.remove("hidden"); }
+  if (!name) { say("Please enter your name.", "err"); nameEl.focus(); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { say("Please enter a valid email address.", "err"); emailEl.focus(); return; }
+  if (!lastV || !lastR) { say("Please complete the calculator first.", "err"); return; }
+
+  var opps = opportunities(lastV, lastR);
+  var oppLines = opps.length ? opps.map(function(o,i){ return (i+1)+". +"+o.delta+" — "+o.label; }).join("\n") : "None identified — strong profile.";
+  var breakdown = "A:"+lastR.A.total+" B:"+lastR.B.total+" C:"+lastR.C.total+"/100 D:"+lastR.D.total+"/600";
+
+  btn.disabled = true; btn.textContent = "Sending…";
+  fetch(RELAY_URL, {
+    method: "POST",
+    headers: {"Content-Type":"application/json","Accept":"application/json"},
+    body: JSON.stringify({
+      name: name,
+      email: email,
+      _subject: "New CRS calculator lead: " + name + " — " + lastR.total + "/1200",
+      _template: "table",
+      _autoresponse: visitorReport(name, lastR, opps, lastV),
+      "CRS score": lastR.total + " / 1200",
+      "Section scores": breakdown,
+      "Top opportunities": oppLines,
+      "Profile inputs": inputSummary(lastV),
+      "Scoring data version": (typeof DATA_VERSION !== "undefined" ? DATA_VERSION : "n/a")
+    })
+  }).then(function(res){ return res.json(); })
+  .then(function(data){
+    if (data && (data.success === true || data.success === "true")) {
+      say("Report sent! Check your inbox (and spam folder, just in case).", "ok");
+    } else {
+      say("Hmm — " + ((data && data.message) || "the email service didn't accept that. Please try again."), "err");
+    }
+  })
+  .catch(function(){ say("Couldn't reach the email service. Please check your connection and try again.", "err"); })
+  .finally(function(){ btn.disabled = false; btn.textContent = "Send my report →"; });
+}
+
+/* ---- UI: language test blocks ---- */
+var ABILITIES = [["r","Reading"],["w","Writing"],["l","Listening"],["s","Speaking"]];
+function testOptions(lang) {
+  if (lang === "en") return [["ielts","IELTS General Training"],["celpip","CELPIP-General"],["pte","PTE Core"]];
+  return [["tef","TEF Canada"],["tcf","TCF Canada"]];
+}
+function scoreOptions(test) {
+  if (test === "ielts") { var o=""; for (var b=9;b>=3;b-=0.5) o+='<option value="'+b.toFixed(1)+'">'+b.toFixed(1)+'</option>'; return o; }
+  if (test === "celpip") { var o2=""; for (var c=12;c>=3;c--) o2+='<option value="'+c+'">'+c+'</option>'; return o2; }
+  return null;
+}
+function langBlockHTML(id, lang) {
+  var h = '<label class="f" for="'+id+'_type">Test type</label><select id="'+id+'_type">';
+  testOptions(lang).forEach(function(t){ h += '<option value="'+t[0]+'">'+t[1]+'</option>'; });
+  h += '</select><div class="grid4" id="'+id+'_scores" style="margin-top:10px">';
+  ABILITIES.forEach(function(a){ h += '<div class="cell"><label>'+a[1]+'</label><span data-ab="'+a[0]+'"></span></div>'; });
+  h += '</div><p class="note" data-note></p>';
+  return h;
+}
+function renderScoreInputs(id) {
+  var test = document.getElementById(id+"_type").value;
+  var opts = scoreOptions(test);
+  document.querySelectorAll("#"+id+"_scores span[data-ab]").forEach(function(sp){
+    if (opts) sp.innerHTML = '<select data-v><option value="">—</option>'+opts+'</select>';
+    else {
+      var max = (test==="tcf" && (sp.dataset.ab==="w"||sp.dataset.ab==="s")) ? 20 : (test==="pte" ? 90 : 699);
+      sp.innerHTML = '<input type="number" data-v min="0" max="'+max+'" placeholder="0–'+max+'">';
+    }
+  });
+  var note = document.getElementById(id+"_scores").parentElement.querySelector("[data-note]");
+  note.textContent = test === "tef" ? "For Express Entry, enter the scores from the “Équivalence ancien score” column of your attestation." : "";
+}
+function readLangBlock(id) {
+  var test = document.getElementById(id+"_type").value;
+  var scores = [];
+  document.querySelectorAll("#"+id+"_scores [data-v]").forEach(function(el){ scores.push(el.value); });
+  while (scores.length < 4) scores.push("");
+  return toCLB(test, scores);
+}
+
+/* ---- Wire up ---- */
+var lang1IsEn = true, spIsEn = true;
+function buildLangBlocks() {
+  document.getElementById("lang1block").innerHTML = langBlockHTML("l1", lang1IsEn ? "en" : "fr");
+  renderScoreInputs("l1");
+  document.getElementById("l1_type").addEventListener("change", function(){ renderScoreInputs("l1"); bindScoreInputs(); recalc(); });
+  var lang2IsEn = !lang1IsEn;
+  document.getElementById("lang2block").innerHTML = langBlockHTML("l2", lang2IsEn ? "en" : "fr");
+  renderScoreInputs("l2");
+  document.getElementById("l2_type").addEventListener("change", function(){ renderScoreInputs("l2"); bindScoreInputs(); recalc(); });
+  buildSpouseBlock();
+  bindScoreInputs();
+}
+function buildSpouseBlock() {
+  document.getElementById("spLangBlock").innerHTML = langBlockHTML("sp", spIsEn ? "en" : "fr");
+  renderScoreInputs("sp");
+  document.getElementById("sp_type").addEventListener("change", function(){ renderScoreInputs("sp"); bindScoreInputs(); recalc(); });
+  bindScoreInputs();
+}
+function bindScoreInputs() {
+  document.querySelectorAll("#lang1block [data-v], #lang2block [data-v], #spLangBlock [data-v]").forEach(function(el){
+    el.oninput = recalc; el.onchange = recalc;
+  });
+}
+
+function radioVal(name) { var el = document.querySelector('input[name="'+name+'"]:checked'); return el ? el.value : null; }
+
+var RING_C = 2 * Math.PI * 52;
+function recalc() {
+  var marital = radioVal("marital"), spouseAcc = radioVal("spouseAcc");
+  document.getElementById("spouseAccWrap").classList.toggle("hidden", marital !== "married");
+  var spouse = (marital === "married" && spouseAcc === "yes");
+  document.getElementById("spouseCard").classList.toggle("hidden", !spouse);
+  document.getElementById("lang2block").classList.toggle("hidden", !document.getElementById("hasLang2").checked);
+
+  var l1clb = readLangBlock("l1");
+  var l2clb = document.getElementById("hasLang2").checked ? readLangBlock("l2") : [0,0,0,0];
+  var enClb = lang1IsEn ? l1clb : l2clb;
+  var frClb = lang1IsEn ? l2clb : l1clb;
+  if (!document.getElementById("hasLang2").checked) { if (lang1IsEn) frClb = [0,0,0,0]; else enClb = [0,0,0,0]; }
+
+  var v = {
+    age: parseInt(document.getElementById("age").value, 10) || 0,
+    marital: marital, spouseAcc: spouseAcc,
+    edu: document.getElementById("edu").value,
+    lang1clb: l1clb, lang2clb: l2clb,
+    lang1IsEn: lang1IsEn, hasLang2: document.getElementById("hasLang2").checked,
+    frenchClb: frClb, englishClb: enClb,
+    cdnWork: parseInt(document.getElementById("cdnWork").value, 10),
+    forWork: parseInt(document.getElementById("forWork").value, 10),
+    spEdu: document.getElementById("spEdu").value,
+    spLangClb: spouse ? readLangBlock("sp") : [0,0,0,0],
+    spCdnWork: parseInt(document.getElementById("spCdnWork").value, 10),
+    cert: radioVal("cert") === "yes",
+    sibling: radioVal("sibling") === "yes",
+    cdnEdu: document.getElementById("cdnEdu").value,
+    jobOffer: document.getElementById("jobOffer").value,
+    pnp: radioVal("pnp") === "yes"
+  };
+  var r = compute(v);
+  lastV = v; lastR = r;
+  document.getElementById("totalScore").textContent = r.total;
+  document.getElementById("ringFg").style.strokeDasharray = RING_C.toFixed(1);
+  document.getElementById("ringFg").style.strokeDashoffset = (RING_C * (1 - r.total/1200)).toFixed(1);
+
+  var tier = document.getElementById("tier");
+  var t, label, verdict;
+  if (r.total >= 500)      { t="t1"; label="Very competitive"; verdict="A very competitive score — above most recent cut-offs."; }
+  else if (r.total >= 470) { t="t2"; label="Competitive"; verdict="Competitive — in range of many recent general draws."; }
+  else if (r.total >= 440) { t="t3"; label="Possible"; verdict="Possible in category-based or PNP draws — consider ways to boost it."; }
+  else                     { t="t4"; label="Below cut-offs"; verdict="Below most cut-offs — a consultation could map out how to raise it."; }
+  tier.className = "tier " + t; tier.textContent = label;
+  document.getElementById("verdict").textContent = verdict;
+
+  function rows(o, labels) {
+    var h = "<table>";
+    labels.forEach(function(k){ h += "<tr><td>"+k[0]+"</td><td>"+o[k[1]]+"</td></tr>"; });
+    return h + "</table>";
+  }
+  var b = "";
+  b += '<details><summary><span>A. Core / human capital</span><span class="pts">'+r.A.total+' pts</span></summary>' + rows(r.A, [["Age","age"],["Education","edu"],["First language","lang1"],["Second language","lang2"],["Canadian work experience","cdn"]]) + "</details>";
+  if (spouse) b += '<details><summary><span>B. Spouse factors</span><span class="pts">'+r.B.total+' pts</span></summary>' + rows(r.B, [["Spouse education","edu"],["Spouse language","lang"],["Spouse Canadian work","cdn"]]) + "</details>";
+  b += '<details><summary><span>C. Skill transferability</span><span class="pts">'+r.C.total+' / 100</span></summary>' + rows(r.C, [["Education + language","eduLang"],["Education + Canadian work","eduCdn"],["Foreign work + language","forLang"],["Foreign + Canadian work","forCdn"],["Trade certificate + language","cert"]]) + "</details>";
+  b += '<details><summary><span>D. Additional</span><span class="pts">'+r.D.total+' / 600</span></summary>' + rows(r.D, [["Sibling in Canada","sibling"],["French proficiency","french"],["Canadian education","cdnEdu"],["Arranged employment","job"],["Provincial nomination","pnp"]]) + "</details>";
+  document.getElementById("breakdown").innerHTML = b;
+  document.getElementById("datastamp").textContent = "Scoring criteria version: " + DATA_VERSION + " (IRCC).";
+  postHeight();
+}
+
+["marital","spouseAcc","cert","sibling","pnp"].forEach(function(n){
+  document.querySelectorAll('input[name="'+n+'"]').forEach(function(el){ el.addEventListener("change", recalc); });
+});
+document.querySelectorAll('input[name="lang1"]').forEach(function(el){
+  el.addEventListener("change", function(){ lang1IsEn = (el.value === "en"); buildLangBlocks(); recalc(); });
+});
+document.querySelectorAll('input[name="spLang"]').forEach(function(el){
+  el.addEventListener("change", function(){ spIsEn = (el.value === "en"); buildSpouseBlock(); recalc(); });
+});
+["age","edu","cdnWork","forWork","spEdu","spCdnWork","cdnEdu","jobOffer"].forEach(function(id){
+  document.getElementById(id).addEventListener("input", recalc);
+  document.getElementById(id).addEventListener("change", recalc);
+});
+document.getElementById("hasLang2").addEventListener("change", recalc);
+document.getElementById("rgBtn").addEventListener("click", sendReport);
+
+document.getElementById("ringFg").style.strokeDasharray = RING_C.toFixed(1);
+document.getElementById("ringFg").style.strokeDashoffset = RING_C.toFixed(1);
+buildLangBlocks();
+recalc();
+
+/* Auto-resize when embedded in an iframe on pglimmigration.com */
+function postHeight(){ try { parent.postMessage({crsHeight: document.documentElement.scrollHeight}, "*"); } catch(e){} }
+window.addEventListener("load", function(){ postHeight(); setTimeout(postHeight, 500); });
+</script>
+</body>
+</html>
