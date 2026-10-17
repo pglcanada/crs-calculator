@@ -111,6 +111,9 @@
   .report-gate .fine{font-size:.74rem;color:#a1a1aa;margin:10px 0 0;line-height:1.55}
   .report-gate .ok{color:#6ee7b7;font-weight:600}
   .report-gate .err{color:#fca5a5;font-weight:600}
+  .report-gate .rg-report{margin-top:14px;padding:16px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14);border-radius:12px}
+  .report-gate .rg-report h4{margin:0 0 10px;font-size:.95rem;color:#fcd34d}
+  .report-gate .rg-body{white-space:pre-wrap;font-size:.86rem;line-height:1.65;color:#fff}
   .disclaimer{font-size:.78rem;color:var(--muted);line-height:1.65;margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
   .datastamp{font-size:.72rem;color:var(--faint);text-align:center;margin-top:12px}
   .fadein{animation:fade .5s ease both}
@@ -253,14 +256,15 @@
       <div class="breakdown" id="breakdown"></div>
       <div class="report-gate">
         <h3>Get your personalized CRS report</h3>
-        <p class="lead">Your full breakdown, plus your 3 biggest opportunities to raise your score — sent to your inbox.</p>
+        <p class="lead">Your full breakdown, plus your 3 biggest opportunities to raise your score — shown instantly below.</p>
         <div class="grid2">
           <input type="text" id="rgName" placeholder="Your name" autocomplete="name" maxlength="80">
           <input type="email" id="rgEmail" placeholder="Email address" autocomplete="email" maxlength="120">
         </div>
         <button id="rgBtn" type="button">Send my report →</button>
-        <p class="fine">We'll email your report to the address above and share a copy with our team so we can follow up. We never sell your information.</p>
+        <p class="fine">Your report appears right below, and a copy goes to our team so we can follow up. We never sell your information.</p>
         <p class="fine hidden" id="rgMsg"></p>
+        <div class="rg-report hidden" id="rgReportWrap"><h4>Your personalized CRS report</h4><div class="rg-body" id="rgReport"></div></div>
       </div>
       <div class="score-cta">
         <span>What does your score mean for your case?</span>
@@ -508,7 +512,9 @@ function sendReport() {
       email: email,
       _subject: "New CRS calculator lead: " + name + " — " + lastR.total + "/1200",
       _template: "table",
-      _autoresponse: visitorReport(name, lastR, opps, lastV),
+      /* NOTE: FormSubmit's _autoresponse does not work with the AJAX endpoint
+         (per their docs), so the visitor's report is rendered on-screen below
+         instead of emailed. The submission copy to info@ still works. */
       "CRS score": lastR.total + " / 1200",
       "Section scores": breakdown,
       "Top opportunities": oppLines,
@@ -518,7 +524,11 @@ function sendReport() {
   }).then(function(res){ return res.json(); })
   .then(function(data){
     if (data && (data.success === true || data.success === "true")) {
-      say("Report sent! Check your inbox (and spam folder, just in case).", "ok");
+      document.getElementById("rgReport").textContent = visitorReport(name, lastR, opps, lastV);
+      var wrap = document.getElementById("rgReportWrap");
+      wrap.classList.remove("hidden");
+      say("Done — here's your personalized report.", "ok");
+      if (wrap.scrollIntoView) { try { wrap.scrollIntoView({behavior:"smooth", block:"nearest"}); } catch(e){} }
     } else {
       say("Hmm — " + ((data && data.message) || "the email service didn't accept that. Please try again."), "err");
     }
