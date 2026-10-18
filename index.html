@@ -256,13 +256,13 @@
       <div class="breakdown" id="breakdown"></div>
       <div class="report-gate">
         <h3>Get your personalized CRS report</h3>
-        <p class="lead">Your full breakdown, plus your 3 biggest opportunities to raise your score — shown instantly below.</p>
+        <p class="lead">Your full breakdown, plus your 3 biggest opportunities to raise your score — shown instantly below and emailed to you.</p>
         <div class="grid2">
           <input type="text" id="rgName" placeholder="Your name" autocomplete="name" maxlength="80">
           <input type="email" id="rgEmail" placeholder="Email address" autocomplete="email" maxlength="120">
         </div>
         <button id="rgBtn" type="button">Send my report →</button>
-        <p class="fine">Your report appears right below, and a copy goes to our team so we can follow up. We never sell your information.</p>
+        <p class="fine">Your report appears right below and a copy is emailed to the address above; our team also receives a copy so we can follow up. We never sell your information.</p>
         <p class="fine hidden" id="rgMsg"></p>
         <div class="rg-report hidden" id="rgReportWrap"><h4>Your personalized CRS report</h4><div class="rg-body" id="rgReport"></div></div>
       </div>
@@ -279,6 +279,7 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
 "use strict";
 /* CRS scoring data — version 2026-10-16, from IRCC's official CRS criteria grid. */
@@ -462,6 +463,13 @@ function inputSummary(v) {
 
 /* ---- Report email (via relay) ---- */
 var RELAY_URL = "https://formsubmit.co/ajax/info@pglimmigration.com";
+/* EmailJS — sends the visitor a copy of their report (FormSubmit's _autoresponse
+   does not work with the AJAX endpoint, per their docs). Public key is public
+   by design; the EmailJS dashboard restricts it to our domains. */
+var EMAILJS_PUBLIC_KEY = "bpCyRjb5df5A3etxb";
+var EMAILJS_SERVICE_ID = "service_7q8xe5g";
+var EMAILJS_TEMPLATE_ID = "template_sevdn6o";
+try { if (window.emailjs) { emailjs.init(EMAILJS_PUBLIC_KEY); } } catch(e){}
 var lastV = null, lastR = null;
 
 function visitorReport(name, r, opps, v) {
@@ -524,11 +532,22 @@ function sendReport() {
   }).then(function(res){ return res.json(); })
   .then(function(data){
     if (data && (data.success === true || data.success === "true")) {
-      document.getElementById("rgReport").textContent = visitorReport(name, lastR, opps, lastV);
+      var rpt = visitorReport(name, lastR, opps, lastV);
+      document.getElementById("rgReport").textContent = rpt;
       var wrap = document.getElementById("rgReportWrap");
       wrap.classList.remove("hidden");
       say("Done — here's your personalized report.", "ok");
       if (wrap.scrollIntoView) { try { wrap.scrollIntoView({behavior:"smooth", block:"nearest"}); } catch(e){} }
+      /* Bonus: email the visitor a copy of their report via EmailJS.
+         The on-screen report above is the primary delivery, so a send
+         failure here is silent — the visitor still has their report. */
+      try {
+        if (window.emailjs) {
+          emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {to_name: name, to_email: email, report: rpt})
+            .then(function(){ say("Done — here's your personalized report. A copy is on its way to your inbox too.", "ok"); })
+            .catch(function(){});
+        }
+      } catch(e){}
     } else {
       say("Hmm — " + ((data && data.message) || "the email service didn't accept that. Please try again."), "err");
     }
