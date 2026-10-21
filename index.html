@@ -34,6 +34,11 @@
   .hero h1{margin:0 0 10px;font-size:clamp(1.6rem,4.5vw,2.2rem);letter-spacing:-.02em;line-height:1.15}
   .hero p{margin:0;color:#c9c9d1;font-size:.95rem;max-width:56ch}
 
+  /* ---------- Nov 3 notice banner (temporary — remove on Nov 2, 2026 redeploy) ---------- */
+  .nov3-banner{display:flex;align-items:flex-start;gap:12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:14px;padding:13px 16px;margin-bottom:16px;box-shadow:var(--shadow)}
+  .nov3-banner p{margin:0;font-size:.88rem;line-height:1.55;color:#78350f}
+  .nov3-banner button{flex:none;background:none;border:none;color:#92400e;font-size:1.05rem;font-weight:700;line-height:1;padding:2px 4px;cursor:pointer}
+
   /* ---------- cards ---------- */
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin-bottom:16px;box-shadow:var(--shadow)}
   .step{display:flex;gap:14px;align-items:flex-start;margin-bottom:6px}
@@ -122,6 +127,23 @@
 </head>
 <body>
 <div class="wrap">
+
+  <!-- NOV3-BANNER: temporary notice, approved by Rej Oct 21, 2026. Remove this whole block (and the .nov3-banner CSS) in the Nov 2, 2026 scoring redeploy. -->
+  <div class="nov3-banner fadein" id="nov3Banner" role="note">
+    <p><strong>Heads-up:</strong> Express Entry scoring changes take effect Nov 3. This calculator uses the current CRS rules and updates automatically on Nov 2 — your score may change.</p>
+    <button type="button" id="nov3BannerClose" aria-label="Dismiss this notice">×</button>
+  </div>
+  <script>
+    (function(){
+      var b=document.getElementById("nov3Banner");
+      try{ if(sessionStorage.getItem("nov3BannerDismissed")==="1"){ b.style.display="none"; } }catch(e){}
+      document.getElementById("nov3BannerClose").addEventListener("click",function(){
+        b.style.display="none";
+        try{ sessionStorage.setItem("nov3BannerDismissed","1"); }catch(e){}
+        if(window.postHeight){ postHeight(); }
+      });
+    })();
+  </script>
 
   <header class="hero fadein">
     <span class="eyebrow">PGL Canadian Immigration Services</span>
