@@ -252,8 +252,8 @@
     <div class="seg"><label><input type="radio" name="sibling" value="no" checked> No</label><label><input type="radio" name="sibling" value="yes"> Yes</label></div>
     <label class="f" for="cdnEdu">Post-secondary education completed in Canada</label>
     <select id="cdnEdu"><option value="0">None</option><option value="15">Credential of 1–2 years</option><option value="30">Credential of 3 years or longer</option></select>
-    <label class="f" for="jobOffer">Arranged employment <span style="color:var(--faint);font-weight:500">(valid qualifying job offer)</span></label>
-    <select id="jobOffer"><option value="0">None</option><option value="200">NOC TEER 0, Major group 00 (senior management)</option><option value="50">NOC TEER 1, 2 or 3 — or other TEER 0</option></select>
+    <label class="f" for="jobOffer">Arranged employment <span style="color:var(--faint);font-weight:500">(valid qualifying job offer — no CRS points since March 25, 2025; high-wage job-offer points return Nov 3, 2026)</span></label>
+    <select id="jobOffer"><option value="0">None — job offers earn 0 CRS points until Nov 3, 2026</option></select>
     <label class="f">Provincial / territorial nomination?</label>
     <div class="seg accent"><label><input type="radio" name="pnp" value="no" checked> No</label><label><input type="radio" name="pnp" value="yes"> Yes — 600 points</label></div>
   </div>
@@ -305,7 +305,7 @@
 <script>
 "use strict";
 /* CRS scoring data — version 2026-10-16, from IRCC's official CRS criteria grid. */
-var DATA_VERSION = "2026-10-16";
+var DATA_VERSION = "2026-10-24";
 
 function pts(table, key, spouse) { var r = table[key]; return spouse ? r[0] : r[1]; }
 
@@ -419,7 +419,7 @@ function compute(v) {
   var fr = v.frenchClb, en = v.englishClb;
   dd.french = (min4(fr) >= 7) ? (min4(en) >= 5 ? 50 : 25) : 0;
   dd.cdnEdu = parseInt(v.cdnEdu, 10) || 0;
-  dd.job = parseInt(v.jobOffer, 10) || 0;
+  dd.job = 0; /* Arranged employment earns no CRS points since Mar 25, 2025 (IRCC); high-wage job-offer points return Nov 3, 2026 under the Labour Market Integration factor — implemented by the Nov 2 redeploy */
   dd.pnp = v.pnp ? 600 : 0;
   out.D = dd; out.D.total = Math.min(600, dd.sibling + dd.french + dd.cdnEdu + dd.job + dd.pnp);
   out.total = out.A.total + out.B.total + out.C.total + out.D.total;
