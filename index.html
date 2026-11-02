@@ -5,11 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Express Entry CRS Calculator | PGL Canadian Immigration Services</title>
 <!--
-  PGL CRS CALCULATOR — scoring data version: 2026-10-16
-  Source: IRCC "Comprehensive Ranking System (CRS) criteria" grid + language test equivalency charts (canada.ca).
+  PGL CRS CALCULATOR — scoring data version: 2026-11-02
+  Source: IRCC "Comprehensive Ranking System (CRS) criteria" grid + language test equivalency charts (canada.ca),
+  plus the Nov 3, 2026 labour market integration factor from IRCC's Oct 16, 2026 backgrounder
+  "Changes to Express Entry for high-wage occupations" (canada.ca).
   Maintained from ~/workspace/pgl-website/crs-calculator/crs-calculator.html
   Weekly automated check compares this data version against the live IRCC page.
   Audit log: 2026-10-16 — full re-verification of all tables/converters against IRCC grid; 24 automated tests pass.
+  Audit log: 2026-10-24 — arranged-employment points zeroed (IRCC removed them Mar 25, 2025).
+  Audit log: 2026-11-02 — labour market integration factor added (job offer 100/70/50, high-wage
+    Canadian-experience bonus 70/40/20, higher of the two, capped 150/140 incl. core Canadian
+    work experience points); temporary Nov 3 notice banner removed; full test suite re-run.
 -->
 <style>
   :root{
@@ -33,11 +39,6 @@
   .eyebrow::before{content:"";width:22px;height:2px;background:var(--red);border-radius:2px}
   .hero h1{margin:0 0 10px;font-size:clamp(1.6rem,4.5vw,2.2rem);letter-spacing:-.02em;line-height:1.15}
   .hero p{margin:0;color:#c9c9d1;font-size:.95rem;max-width:56ch}
-
-  /* ---------- Nov 3 notice banner (temporary — remove on Nov 2, 2026 redeploy) ---------- */
-  .nov3-banner{display:flex;align-items:flex-start;gap:12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:14px;padding:13px 16px;margin-bottom:16px;box-shadow:var(--shadow)}
-  .nov3-banner p{margin:0;font-size:.88rem;line-height:1.55;color:#78350f}
-  .nov3-banner button{flex:none;background:none;border:none;color:#92400e;font-size:1.05rem;font-weight:700;line-height:1;padding:2px 4px;cursor:pointer}
 
   /* ---------- cards ---------- */
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin-bottom:16px;box-shadow:var(--shadow)}
@@ -127,23 +128,6 @@
 </head>
 <body>
 <div class="wrap">
-
-  <!-- NOV3-BANNER: temporary notice, approved by Rej Oct 21, 2026. Remove this whole block (and the .nov3-banner CSS) in the Nov 2, 2026 scoring redeploy. -->
-  <div class="nov3-banner fadein" id="nov3Banner" role="note">
-    <p><strong>Heads-up:</strong> Express Entry scoring changes take effect Nov 3. This calculator uses the current CRS rules and updates automatically on Nov 2 — your score may change.</p>
-    <button type="button" id="nov3BannerClose" aria-label="Dismiss this notice">×</button>
-  </div>
-  <script>
-    (function(){
-      var b=document.getElementById("nov3Banner");
-      try{ if(sessionStorage.getItem("nov3BannerDismissed")==="1"){ b.style.display="none"; } }catch(e){}
-      document.getElementById("nov3BannerClose").addEventListener("click",function(){
-        b.style.display="none";
-        try{ sessionStorage.setItem("nov3BannerDismissed","1"); }catch(e){}
-        if(window.postHeight){ postHeight(); }
-      });
-    })();
-  </script>
 
   <header class="hero fadein">
     <span class="eyebrow">PGL Canadian Immigration Services</span>
@@ -252,8 +236,11 @@
     <div class="seg"><label><input type="radio" name="sibling" value="no" checked> No</label><label><input type="radio" name="sibling" value="yes"> Yes</label></div>
     <label class="f" for="cdnEdu">Post-secondary education completed in Canada</label>
     <select id="cdnEdu"><option value="0">None</option><option value="15">Credential of 1–2 years</option><option value="30">Credential of 3 years or longer</option></select>
-    <label class="f" for="jobOffer">Arranged employment <span style="color:var(--faint);font-weight:500">(valid qualifying job offer — no CRS points since March 25, 2025; high-wage job-offer points return Nov 3, 2026)</span></label>
-    <select id="jobOffer"><option value="0">None — job offers earn 0 CRS points until Nov 3, 2026</option></select>
+    <label class="f" for="jobOffer">Qualifying job offer in a high-wage occupation <span style="color:var(--faint);font-weight:500">(full-time, continuous, at least 1 year after permanent residence; no LMIA required from Nov 3, 2026)</span></label>
+    <select id="jobOffer"><option value="0">None</option><option value="50">Occupation median wage ≥ 1.3× the national median — 50 pts</option><option value="70">Occupation median wage ≥ 1.5× the national median — 70 pts</option><option value="100">Occupation median wage ≥ 2× the national median — 100 pts</option></select>
+    <label class="f" for="cdnHighWage">Canadian work experience in a high-wage occupation <span style="color:var(--faint);font-weight:500">(bonus on top of your Canadian work experience points above; needs at least 12 months in the last 10 years, TEER 0–3)</span></label>
+    <select id="cdnHighWage"><option value="0">None / not in a high-wage occupation</option><option value="20">At least 12 months combined at ≥ 1.3× the median — +20 pts</option><option value="40">At least 12 months combined at ≥ 1.5× the median or above — +40 pts</option><option value="70">At least 12 months in an occupation at ≥ 2× the median — +70 pts</option></select>
+    <p class="note">Labour market integration factor (from Nov 3, 2026): only the higher of the two counts — job-offer and high-wage experience points are never combined. The factor, including your Canadian work experience points above, is capped at 150 points (140 with an accompanying spouse).</p>
     <label class="f">Provincial / territorial nomination?</label>
     <div class="seg accent"><label><input type="radio" name="pnp" value="no" checked> No</label><label><input type="radio" name="pnp" value="yes"> Yes — 600 points</label></div>
   </div>
@@ -304,8 +291,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
 "use strict";
-/* CRS scoring data — version 2026-10-16, from IRCC's official CRS criteria grid. */
-var DATA_VERSION = "2026-10-24";
+/* CRS scoring data — version 2026-11-02, from IRCC's official CRS criteria grid plus the
+   Nov 3, 2026 labour market integration factor (Oct 16, 2026 IRCC backgrounder, re-verified live Nov 2, 2026). */
+var DATA_VERSION = "2026-11-02";
 
 function pts(table, key, spouse) { var r = table[key]; return spouse ? r[0] : r[1]; }
 
@@ -419,9 +407,19 @@ function compute(v) {
   var fr = v.frenchClb, en = v.englishClb;
   dd.french = (min4(fr) >= 7) ? (min4(en) >= 5 ? 50 : 25) : 0;
   dd.cdnEdu = parseInt(v.cdnEdu, 10) || 0;
-  dd.job = 0; /* Arranged employment earns no CRS points since Mar 25, 2025 (IRCC); high-wage job-offer points return Nov 3, 2026 under the Labour Market Integration factor — implemented by the Nov 2 redeploy */
+  /* Labour market integration factor (from Nov 3, 2026, IRCC backgrounder):
+     higher of (core Canadian work experience points + high-wage bonus) and
+     (qualifying job-offer points), capped at 150 (no spouse) / 140 (with
+     spouse). Only the amount above the core Canadian work experience points
+     already counted in A is added here, so nothing double-counts. The
+     high-wage bonus needs at least 1 year of Canadian work experience. */
+  var jobPts = parseInt(v.jobOffer, 10) || 0;
+  var hwBonus = (v.cdnWork >= 1) ? (parseInt(v.cdnHighWage, 10) || 0) : 0;
+  var lmifCap = spouse ? 140 : 150;
+  var lmifTotal = Math.min(lmifCap, Math.max(out.A.cdn + hwBonus, jobPts));
+  dd.lmif = Math.max(0, lmifTotal - out.A.cdn);
   dd.pnp = v.pnp ? 600 : 0;
-  out.D = dd; out.D.total = Math.min(600, dd.sibling + dd.french + dd.cdnEdu + dd.job + dd.pnp);
+  out.D = dd; out.D.total = Math.min(600, dd.sibling + dd.french + dd.cdnEdu + dd.lmif + dd.pnp);
   out.total = out.A.total + out.B.total + out.C.total + out.D.total;
   return out;
 }
@@ -477,7 +475,8 @@ function inputSummary(v) {
   if (v.cert) bonus.push("trade certificate");
   if (v.sibling) bonus.push("sibling in Canada");
   if (v.cdnEdu !== "0") bonus.push("Canadian education (" + v.cdnEdu + " pts)");
-  if (v.jobOffer !== "0") bonus.push("arranged employment (" + v.jobOffer + " pts)");
+  if (v.jobOffer !== "0") bonus.push("qualifying job offer in a high-wage occupation (" + v.jobOffer + " pts)");
+  if (v.cdnHighWage && v.cdnHighWage !== "0") bonus.push("high-wage Canadian work experience bonus (+" + v.cdnHighWage + " pts)");
   if (v.pnp) bonus.push("provincial nomination");
   L.push("Bonus factors: " + (bonus.length ? bonus.join("; ") : "none"));
   return L.join("\n");
@@ -675,6 +674,7 @@ function recalc() {
     sibling: radioVal("sibling") === "yes",
     cdnEdu: document.getElementById("cdnEdu").value,
     jobOffer: document.getElementById("jobOffer").value,
+    cdnHighWage: document.getElementById("cdnHighWage").value,
     pnp: radioVal("pnp") === "yes"
   };
   var r = compute(v);
@@ -701,7 +701,7 @@ function recalc() {
   b += '<details><summary><span>A. Core / human capital</span><span class="pts">'+r.A.total+' pts</span></summary>' + rows(r.A, [["Age","age"],["Education","edu"],["First language","lang1"],["Second language","lang2"],["Canadian work experience","cdn"]]) + "</details>";
   if (spouse) b += '<details><summary><span>B. Spouse factors</span><span class="pts">'+r.B.total+' pts</span></summary>' + rows(r.B, [["Spouse education","edu"],["Spouse language","lang"],["Spouse Canadian work","cdn"]]) + "</details>";
   b += '<details><summary><span>C. Skill transferability</span><span class="pts">'+r.C.total+' / 100</span></summary>' + rows(r.C, [["Education + language","eduLang"],["Education + Canadian work","eduCdn"],["Foreign work + language","forLang"],["Foreign + Canadian work","forCdn"],["Trade certificate + language","cert"]]) + "</details>";
-  b += '<details><summary><span>D. Additional</span><span class="pts">'+r.D.total+' / 600</span></summary>' + rows(r.D, [["Sibling in Canada","sibling"],["French proficiency","french"],["Canadian education","cdnEdu"],["Arranged employment","job"],["Provincial nomination","pnp"]]) + "</details>";
+  b += '<details><summary><span>D. Additional</span><span class="pts">'+r.D.total+' / 600</span></summary>' + rows(r.D, [["Sibling in Canada","sibling"],["French proficiency","french"],["Canadian education","cdnEdu"],["Labour market integration","lmif"],["Provincial nomination","pnp"]]) + "</details>";
   document.getElementById("breakdown").innerHTML = b;
   document.getElementById("datastamp").textContent = "Scoring criteria version: " + DATA_VERSION + " (IRCC).";
   postHeight();
@@ -716,7 +716,7 @@ document.querySelectorAll('input[name="lang1"]').forEach(function(el){
 document.querySelectorAll('input[name="spLang"]').forEach(function(el){
   el.addEventListener("change", function(){ spIsEn = (el.value === "en"); buildSpouseBlock(); recalc(); });
 });
-["age","edu","cdnWork","forWork","spEdu","spCdnWork","cdnEdu","jobOffer"].forEach(function(id){
+["age","edu","cdnWork","forWork","spEdu","spCdnWork","cdnEdu","jobOffer","cdnHighWage"].forEach(function(id){
   document.getElementById(id).addEventListener("input", recalc);
   document.getElementById(id).addEventListener("change", recalc);
 });
